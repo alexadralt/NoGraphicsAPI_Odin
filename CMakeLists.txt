@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(NoGraphicsAPI VERSION 0.1.0 LANGUAGES CXX)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
 if(MINGW)
     message(FATAL_ERROR "NoGraphicsAPI does not support MinGW")
 endif()

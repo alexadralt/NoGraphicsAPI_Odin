@@ -5,7 +5,7 @@ extern "C" {
         return gpu::create_device(*desc);
     }
     
-    void gpu_desctroy_device(gpu::Device* device) {
+    void gpu_destroy_device(gpu::Device* device) {
         return gpu::destroy_device(device);
     }
 

@@ -1,6 +1,10 @@
 package gpu
 
-foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
+when ODIN_DEBUG {
+    foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
+} else {
+    foreign import NoGraphicsAPI "../build/Release/NoGraphicsAPI.lib"
+}
 
 Device :: struct {}
 
@@ -98,9 +102,9 @@ DeviceInit :: struct {
     error  : Error,
 }
 
-@(default_calling_convention = "C", link_prefix="_gpu")
+@(default_calling_convention = "c", link_prefix="gpu_")
 foreign NoGraphicsAPI {
     @(require_results) create_device :: proc(desc : ^DeviceDesc) -> DeviceInit ---
-    gpu_desctroy_device :: proc(device : ^Device) ---
-    gpu_get_device_caps :: proc(device : ^Device) -> ^DeviceCaps ---
+    destroy_device :: proc(device : ^Device) ---
+    get_device_caps :: proc(device : ^Device) -> ^DeviceCaps ---
 }
