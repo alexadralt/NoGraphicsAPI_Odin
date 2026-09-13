@@ -1,3 +1,5 @@
+package gpu
+
 foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
 
 Device :: struct {}
@@ -70,6 +72,20 @@ Format :: enum u8 {
     undefined, // Must remain last; preceding values are concrete texture formats.
 }
 
+DeviceCaps :: struct {
+    device_name              : cstring,
+    max_push_data_size       : u64,
+    // Common element size for suballocating TextureHeap storage; every SizeAlign::align divides this value.
+    texture_heap_alignment   : u64,
+    texture_descriptor_size  : u64, // Bytes per descriptor slot.
+    sampler_descriptor_size  : u64, // Bytes per descriptor slot.
+    timestamp_period_ns      : f32, // Nanoseconds per timestamp tick.
+    sub_texel_precision_bits : u32, // Fractional filtering precision, for conservative sampled-field bounds.
+    texture_compression_bc   : bool,
+    texture_compression_astc : bool,
+    storage_input_output16   : bool,
+}
+
 DeviceDesc :: struct {
     window                        : rawptr,
     swapchain_format              : Format,
@@ -82,8 +98,9 @@ DeviceInit :: struct {
     error  : Error,
 }
 
-@(default_calling_convention ="C", link_prefix="_gpu")
+@(default_calling_convention = "C", link_prefix="_gpu")
 foreign NoGraphicsAPI {
     @(require_results) create_device :: proc(desc : ^DeviceDesc) -> DeviceInit ---
     gpu_desctroy_device :: proc(device : ^Device) ---
+    gpu_get_device_caps :: proc(device : ^Device) -> ^DeviceCaps ---
 }
