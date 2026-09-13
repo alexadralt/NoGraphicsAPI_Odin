@@ -15,3 +15,5 @@ CMakeFiles/
 /compile_commands.json
 /examples/*/shaders/
 /*.ppm
+*.sublime-project
+*.sublime-workspace

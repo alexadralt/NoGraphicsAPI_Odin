@@ -39,6 +39,7 @@ add_library(NoGraphicsAPI STATIC
     include/NoGraphicsAPI/bit.hpp
     include/NoGraphicsAPI/NoGraphicsAPI.hpp
     src/NoGraphicsAPI.cpp
+    odin/NoGraphicsAPI_extern_c.cpp
 )
 add_library(NoGraphicsAPI::NoGraphicsAPI ALIAS NoGraphicsAPI)
 set_target_properties(NoGraphicsAPI PROPERTIES EXPORT_NAME NoGraphicsAPI)
