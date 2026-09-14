@@ -1,8 +1,8 @@
 package gpu
 
-main_library_optimized :: #config(MAIN_LIBRARY_OPTIMIZED, false)
+optimized :: #config(NO_GRAPHICS_API_OPTIMIZED, false)
 
-when main_library_optimized {
+when optimized {
     foreign import NoGraphicsAPI "../build/RelWithDebInfo/NoGraphicsAPI.lib"
 } else {
     foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
