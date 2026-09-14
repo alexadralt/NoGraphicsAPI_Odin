@@ -86,6 +86,8 @@ main :: proc() {
         append(&args, "-o:speed")
     }
 
+    append(&args, fmt.tprintf("-define:MAIN_LIBRARY_OPTIMIZED=%v", optimized_build))
+
     vulkan_sdk_path := os.get_env_alloc("VULKAN_SDK", context.temp_allocator)
     if len(vulkan_sdk_path) == 0 {
         fmt.printfln("failed to fetch vulkan sdk path from environment variable")

@@ -1,9 +1,11 @@
 package gpu
 
-when ODIN_DEBUG {
-    foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
-} else {
+main_library_optimized :: #config(MAIN_LIBRARY_OPTIMIZED, false)
+
+when main_library_optimized {
     foreign import NoGraphicsAPI "../build/RelWithDebInfo/NoGraphicsAPI.lib"
+} else {
+    foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
 }
 
 Device :: struct {}
