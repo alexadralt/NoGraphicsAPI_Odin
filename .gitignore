@@ -17,3 +17,5 @@ CMakeFiles/
 /*.ppm
 *.sublime-project
 *.sublime-workspace
+/out/
+/odin_example/assets/shaders/compiled/

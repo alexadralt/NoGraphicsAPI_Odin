@@ -3,7 +3,7 @@ package gpu
 when ODIN_DEBUG {
     foreign import NoGraphicsAPI "../build/Debug/NoGraphicsAPI.lib"
 } else {
-    foreign import NoGraphicsAPI "../build/Release/NoGraphicsAPI.lib"
+    foreign import NoGraphicsAPI "../build/RelWithDebInfo/NoGraphicsAPI.lib"
 }
 
 Device :: struct {}
