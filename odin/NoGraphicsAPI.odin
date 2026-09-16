@@ -56,7 +56,7 @@ TextureHeap :: struct {
 }
 
 TimelinePoint :: struct {
-    semaphore : TimelineSemaphore,
+    semaphore : ^TimelineSemaphore,
     value     : u64,
 }
 

@@ -123,8 +123,8 @@ main :: proc() {
         os.make_directory(shader_binary_dir_path)
     }
 
-    /*if !compile_shader(&args, shaders_dir_path, "2d_renderer_vertex", .Vertex) do return
-    if !compile_shader(&args, shaders_dir_path, "2d_renderer_pixel",  .Pixel)  do return*/
+    if !compile_shader(&args, shaders_dir_path, "example_triangle", .vertex)   do return
+    if !compile_shader(&args, shaders_dir_path, "example_triangle", .fragment) do return
 
     // running the compiler
 
@@ -143,9 +143,9 @@ main :: proc() {
 }
 
 Shader_Type :: enum {
-    Vertex,
-    Pixel,
-    Compute,
+    vertex,
+    fragment,
+    compute,
 }
 
 compile_shader :: proc(args : ^[dynamic]string, shaders_dir_path : string, shader : string, type : Shader_Type) -> (ok : bool) {
@@ -159,15 +159,62 @@ compile_shader :: proc(args : ^[dynamic]string, shaders_dir_path : string, shade
         return false
     }
 
-    binary := compile_slang_shader(shader_path, type) or_return
-    shader_binary_path, _ := os.join_path([]string{shaders_dir_path, "compiled", shader}, context.temp_allocator)
+    shader_binary_path, _ := os.join_path([]string{shaders_dir_path, "compiled", fmt.tprintf("%v_%v", shader, type)}, context.temp_allocator)
+    compile_slang_shader(shader_path, shader_binary_path, type) or_return
 
-    append(args, fmt.tprintf("-define:SHADER_%v_BINARY_PATH=%v", shader, shader_binary_path))
-
-    os_error := os.write_entire_file(shader_binary_path, binary)
-    return os_error == nil
+    append(args, fmt.tprintf("-define:SHADER_%v_%v_BINARY_PATH=%v", shader, type, shader_binary_path))
+    return true
 }
 
-compile_slang_shader :: proc(shader_path : string, type : Shader_Type) -> (binary : []u8, ok : bool) {
-    return
+compile_slang_shader :: proc(shader_path : string, shader_binary_path : string, type : Shader_Type) -> (ok : bool) {
+    fmt.printfln("compiling %v shader %v", type, shader_path)
+
+    process_desc := os.Process_Desc{
+        command = []string{
+            "slangc", shader_path,
+            "-target", "spirv",
+            "-profile", "spirv_1_5",
+            "-emit-spirv-directly",
+            "-fvk-use-entrypoint-name",
+            "-fvk-use-c-layout",
+            "-matrix-layout-row-major",
+            "-capability", "spvDescriptorHeapEXT",
+            "-entry", fmt.tprintf("%vMain", type),
+            "-stage", fmt.tprintf("%v", type),
+            "-o", shader_binary_path,
+        }
+    }
+    state, stdout, stderr, err := os.process_exec(process_desc, context.temp_allocator)
+    if err != os.ERROR_NONE {
+        fmt.printfln("could not run the slang compiler: %v", err)
+        return
+    }
+
+    if len(stdout) != 0 do fmt.printf("%v\n\n", string(stdout))
+    if len(stderr) != 0 do fmt.printf("%v\n\n", string(stderr))
+    if state.exit_code != 0 do fmt.printf("compilation finished with code %v\n\n", state.exit_code)
+
+    return state.exit_code == 0 && len(stderr) == 0 && len(stdout) == 0 && validate_spirv(shader_binary_path)
+}
+
+validate_spirv :: proc(path : string) -> (ok : bool) {
+    process_desc := os.Process_Desc{
+        command = []string{
+            "spirv-val",
+            "--target-env", "vulkan1.4",
+            "--scalar-block-layout",
+            path,
+        }
+    }
+    state, stdout, stderr, err := os.process_exec(process_desc, context.temp_allocator)
+    if err != os.ERROR_NONE {
+        fmt.printfln("could not run spirv-val: %v", err)
+        return
+    }
+
+    if len(stdout) != 0 do fmt.printf("%v\n\n", string(stdout))
+    if len(stderr) != 0 do fmt.printf("%v\n\n", string(stderr))
+    if state.exit_code != 0 do fmt.printf("spirv validation finished with code: %v\n\n", state.exit_code)
+
+    return state.exit_code == 0 && len(stderr) == 0 && len(stdout) == 0
 }
