@@ -15,11 +15,6 @@ optimized_build : bool
 main :: proc() {
     fmt.println("running build metaprogram")
 
-    output_path, _ := os.get_absolute_path(output_directory, context.temp_allocator)
-    if !os.exists(output_path) {
-        os.make_directory(output_path)
-    }
-
     optimized_build = slice.contains(os.args, "optimized_build")
 
     // run cmake to build the main library
@@ -66,6 +61,13 @@ main :: proc() {
     fmt.printf("main library compilation finished with code %v\n\n", state.exit_code)
 
     if state.exit_code != 0 || len(stderr) != 0 do return
+
+    if !slice.contains(os.args, "build_example") do return // build example only when asked to
+
+    output_path, _ := os.get_absolute_path(output_directory, context.temp_allocator)
+    if !os.exists(output_path) {
+        os.make_directory(output_path)
+    }
 
     // generate compiler flags
 
