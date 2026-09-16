@@ -85,8 +85,8 @@ cannot source its payload from GPU memory, so `NoGraphicsAPI` uses one small CPU
 active graphics stages. Arbitrary larger structures remain reachable through GPU pointers, without
 a binding layout.
 
-Root structures must be trivially copyable, use a byte size divisible by four, and fit
-`DeviceCaps::max_push_data_size`.
+Root structures must be trivially copyable, use a byte size divisible by four, and fit within 256 bytes
+and `DeviceCaps::max_push_data_size`.
 
 ## Typed GPU pointers
 

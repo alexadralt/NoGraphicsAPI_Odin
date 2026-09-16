@@ -724,6 +724,7 @@ void set_depth_stencil(CommandBuffer* commands, const DepthStencilState& state) 
 
 void bind_pso(CommandBuffer* commands, const PSO* pso) noexcept;
 
+// Draw and dispatch root structures must fit 256 bytes. Larger data belongs in GPU memory referenced by root pointers.
 void draw(CommandBuffer* commands, ByteSpan root, uint32 vertex_count, uint32 instance_count = 1, uint32 first_vertex = 0, uint32 first_instance = 0) noexcept;
 void draw_indexed(CommandBuffer* commands, ByteSpan root, GpuRange indices, IndexType type, uint32 index_count, uint32 instance_count = 1,
                   uint32 first_index = 0, int32 vertex_offset = 0, uint32 first_instance = 0) noexcept;

@@ -3505,6 +3505,7 @@ void end_render_pass(CommandBuffer* commands) noexcept
 void draw(CommandBuffer* commands, ByteSpan root, uint32 vertex_count, uint32 instance_count, uint32 first_vertex, uint32 first_instance) noexcept
 {
     assert(commands);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     vkCmdDraw(commands->command_buffer, vertex_count, instance_count, first_vertex, first_instance);
 }
@@ -3513,6 +3514,7 @@ void draw_indexed(CommandBuffer* commands, ByteSpan root, GpuRange indices, Inde
                   int32 vertex_offset, uint32 first_instance) noexcept
 {
     assert(commands && commands->state);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     const VkBindIndexBuffer3InfoKHR bind_info{
         .sType = VK_STRUCTURE_TYPE_BIND_INDEX_BUFFER_3_INFO_KHR,
@@ -3530,6 +3532,7 @@ void draw_indexed(CommandBuffer* commands, ByteSpan root, GpuRange indices, Inde
 void draw_indirect(CommandBuffer* commands, ByteSpan root, GpuRange arguments, uint32 draw_count, uint32 stride) noexcept
 {
     assert(commands && commands->state);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     const VkDrawIndirect2InfoKHR info{
         .sType = VK_STRUCTURE_TYPE_DRAW_INDIRECT_2_INFO_KHR,
@@ -3548,6 +3551,7 @@ void draw_indexed_indirect(CommandBuffer* commands, ByteSpan root, GpuRange indi
                            uint32 stride) noexcept
 {
     assert(commands && commands->state);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     const VkBindIndexBuffer3InfoKHR bind_info{
         .sType = VK_STRUCTURE_TYPE_BIND_INDEX_BUFFER_3_INFO_KHR,
@@ -3575,6 +3579,7 @@ void draw_indexed_indirect(CommandBuffer* commands, ByteSpan root, GpuRange indi
 void dispatch(CommandBuffer* commands, ByteSpan root, uint32x3 group_count) noexcept
 {
     assert(commands);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     vkCmdDispatch(commands->command_buffer, group_count.x, group_count.y, group_count.z);
 }
@@ -3582,6 +3587,7 @@ void dispatch(CommandBuffer* commands, ByteSpan root, uint32x3 group_count) noex
 void dispatch_indirect(CommandBuffer* commands, ByteSpan root, GpuRange arguments) noexcept
 {
     assert(commands && commands->state);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     const VkDispatchIndirect2InfoKHR info{
         .sType = VK_STRUCTURE_TYPE_DISPATCH_INDIRECT_2_INFO_KHR,
@@ -3597,6 +3603,7 @@ void dispatch_indirect(CommandBuffer* commands, ByteSpan root, GpuRange argument
 void draw_meshlets(CommandBuffer* commands, ByteSpan root, uint32x3 group_count) noexcept
 {
     assert(commands && commands->state);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     commands->state->fn.cmd_draw_mesh_tasks(commands->command_buffer, group_count.x, group_count.y, group_count.z);
 }
@@ -3604,6 +3611,7 @@ void draw_meshlets(CommandBuffer* commands, ByteSpan root, uint32x3 group_count)
 void draw_meshlets_indirect(CommandBuffer* commands, ByteSpan root, GpuRange arguments, uint32 draw_count, uint32 stride) noexcept
 {
     assert(commands && commands->state);
+    assert(root.size <= 256);
     emit_root_data(commands, root);
     const VkDrawIndirect2InfoKHR info{
         .sType = VK_STRUCTURE_TYPE_DRAW_INDIRECT_2_INFO_KHR,

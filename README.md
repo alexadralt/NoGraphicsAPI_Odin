@@ -101,8 +101,8 @@ float4x4 mvp = root.mvp;
 
 The draw or dispatch copies the root bytes immediately through `vkCmdPushDataEXT`; the root does not
 need to outlive the call. Shared structures use C layout, and matrix-bearing roots use row-major matrix
-layout. Root values must be trivially copyable, have a size divisible by four, and be no larger than
-`DeviceCaps::max_push_data_size`.
+layout. Root values must be trivially copyable, have a size divisible by four, and fit within 256 bytes
+and `DeviceCaps::max_push_data_size`. Larger data remains accessible through GPU pointers in the root.
 
 Public descriptor structures have useful defaults. Call sites use C++20 designated initializers to
 name only fields that differ from those defaults. `Span` and `ByteSpan` are non-owning pointer/count

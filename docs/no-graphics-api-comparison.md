@@ -118,15 +118,15 @@ requirements.
 The exact root contract is:
 
 - one root block is shared by all active graphics stages;
-- the byte size is a multiple of four and does not exceed `DeviceCaps::max_push_data_size`;
+- the byte size is a multiple of four and does not exceed 256 bytes or `DeviceCaps::max_push_data_size`;
 - typed roots are trivially copyable;
 - shared structures use C layout, with row-major layout enabled for matrices; and
 - `{}` represents a rootless command and emits no push-data operation.
 
 This is a deliberate performance-oriented adaptation. Pushing the entire small root lets the shader
 read fields immediately; pushing only its GPU address would add another dependent memory load.
-However, it cannot represent separate vertex and fragment roots, roots larger than the device's
-push-data limit, or roots generated and selected by the GPU. A future fully GPU-driven path would
+However, it cannot represent separate vertex and fragment roots, roots larger than 256 bytes or the
+device's push-data limit, or roots generated and selected by the GPU. A future fully GPU-driven path would
 need explicit GPU-root commands rather than changing this ABI implicitly.
 
 ## Pipelines and rendering

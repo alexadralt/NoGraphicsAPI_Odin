@@ -158,8 +158,8 @@ bytes with `vkCmdPushDataEXT`. The structure may combine:
 
 The CPU root value only needs to survive the API call because the command buffer receives a copy.
 One root is shared by the active graphics stages. Referenced heap ranges and descriptor entries follow the
-normal submission and timeline lifetime rules. Root-data size must be a multiple of four and fit
-`DeviceCaps::max_push_data_size`; `{}` is the rootless ABI.
+normal submission and timeline lifetime rules. Root-data size must be a multiple of four and fit within
+256 bytes and `DeviceCaps::max_push_data_size`; `{}` is the rootless ABI.
 
 Pipelines are created with `VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT` and a null pipeline layout.
 The backend never records push constants, descriptor sets, descriptor buffers, or push descriptors,
