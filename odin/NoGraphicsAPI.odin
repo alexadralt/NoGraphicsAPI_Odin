@@ -603,7 +603,9 @@ foreign NoGraphicsAPI {
     set_scissor       :: proc(commands : ^CommandBuffer, #by_ptr scissor : Scissor) ---
     set_depth_stencil :: proc(commands : ^CommandBuffer, #by_ptr state : DepthStencilState) ---
 
-    bind_pso               :: proc(commands : ^CommandBuffer, pso : ^PSO) ---
+    bind_pso :: proc(commands : ^CommandBuffer, pso : ^PSO) ---
+    
+    // Draw and dispatch root structures must fit 256 bytes. Larger data belongs in GPU memory referenced by root pointers.
     draw                   :: proc(commands : ^CommandBuffer, root : ByteSpan, vertex_count : u32, instance_count : u32 = 1, first_vertex : u32 = 0, first_instance : u32 = 0) ---
     draw_indexed           :: proc(commands : ^CommandBuffer, root : ByteSpan, indices : GpuRange, type : IndexType, index_count : u32, instance_count : u32 = 1, first_index : u32 = 0, vertex_offset : i32 = 0, first_instance : u32 = 0) ---
     draw_indirect          :: proc(commands : ^CommandBuffer, root : ByteSpan, arguments : GpuRange, draw_count : u32 = 1, stride : u32 = 0) ---
