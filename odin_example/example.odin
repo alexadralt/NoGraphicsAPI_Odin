@@ -7,11 +7,10 @@ import "core:fmt"
 FRAMES_IN_FLIGHT :: 2
 
 main :: proc() {
-    desc := gpu.DeviceDesc{
+    device_init := gpu.create_device({
         swapchain_format = .bgra8_unorm,
         desired_swapchain_image_count = FRAMES_IN_FLIGHT,
-    }
-    device_init := gpu.create_device(&desc)
+    })
     if device_init.error != .none {
         fmt.printfln("Error when creating device: %v", device_init.error)
         return
