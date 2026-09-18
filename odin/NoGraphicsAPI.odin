@@ -33,13 +33,13 @@ SizeAlign :: struct {
 }
 
 GpuRange :: struct {
-    gpu  : rawptr,
+    gpu  : [^]u8,
     size : u64,
 }
 
 GpuCpuRange :: struct($T : typeid) {
-    cpu  : ^T,
-    gpu  : ^T,
+    cpu  : [^]T,
+    gpu  : [^]T,
     size : u64, // Bytes, independent of T.
 }
 
@@ -48,6 +48,16 @@ GpuHeap :: struct {
     range : GpuCpuRange(u8),
     owner : ^GpuHeapOwner,
 }
+
+@(require_results) gpu_range_from_GpuCpuRange :: proc(range : GpuCpuRange($T)) -> GpuRange {
+    return {gpu = range.gpu, size = range.size}
+}
+
+@(require_results) gpu_range_from_GpuHeap :: proc(heap : GpuHeap) -> GpuRange {
+    return gpu_range(heap.range)
+}
+
+gpu_range :: proc{gpu_range_from_GpuCpuRange, gpu_range_from_GpuHeap}
 
 TextureHeap :: struct {
     // Copies alias the same allocation. Pass one unchanged copy to destroy_texture_heap exactly once.
@@ -510,16 +520,6 @@ RenderingDesc :: struct {
     depth   : DepthAttachment,
     stencil : StencilAttachment,
 }
-
-@(require_results) gpu_range_from_GpuCpuRange :: proc(range : GpuCpuRange($T)) -> GpuRange {
-    return {gpu = range.gpu, size = range.size}
-}
-
-@(require_results) gpu_range_from_GpuHeap :: proc(heap : ^GpuHeap) -> GpuRange {
-    return gpu_range(heap.range)
-}
-
-gpu_range :: proc{gpu_range_from_GpuCpuRange, gpu_range_from_GpuHeap}
 
 ByteSpan :: []u8
 
