@@ -568,7 +568,7 @@ foreign NoGraphicsAPI {
                        destroy_texture          :: proc(texture : ^Texture) ---
     @(require_results) create_render_view       :: proc(texture : ^Texture, #by_ptr desc : RenderViewDesc = {}) -> ^RenderView ---
                        destroy_render_view      :: proc(render_view : ^RenderView) ---
-                       write_texture_descriptor :: proc(device : ^Device, cpu_destination : rawptr, #by_ptr texture : Texture, type : TextureDescriptorType, #by_ptr desc : TextureDescriptorDesc = {}) ---
+                       write_texture_descriptor :: proc(device : ^Device, cpu_destination : rawptr, texture : ^Texture, type : TextureDescriptorType, #by_ptr desc : TextureDescriptorDesc = {}) ---
                        write_sampler_descriptor :: proc(device : ^Device, cpu_destination : rawptr, #by_ptr desc : SamplerDesc = {}) ---
 
     @(require_results) create_graphics_pso :: proc(device : ^Device, #by_ptr desc : GraphicsPSODesc) -> ^PSO ---
