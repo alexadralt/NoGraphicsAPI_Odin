@@ -17,10 +17,12 @@ main :: proc() {
     }
     defer close_example_window(window)
 
+    frames_in_filght :: 2
     device_init := gpu.create_device({
         window                        = window,
         swapchain_format              = .bgra8_srgb,
-        desired_swapchain_image_count = 2,
+        desired_swapchain_image_count = frames_in_filght,
+        desired_queue_count           = 1,
     })
     if device_init.error != .none {
         fmt.printfln("Error when creating device: %v", device_init.error)
@@ -46,11 +48,19 @@ main :: proc() {
     latest_completion := gpu.TimelinePoint{ semaphore = gpu.create_timeline_semaphore(device) }
     defer gpu.destroy_timeline_semaphore(latest_completion.semaphore)
 
+    cmd_pools : [frames_in_filght]^gpu.CommandPool
+    for &pool in cmd_pools do pool = gpu.create_command_pool(device)
+    defer for pool in cmd_pools do gpu.destroy_command_pool(pool)
+
     for pump_example_window(window) {
-        frame := gpu.acquire(device)
+        if latest_completion.value >= 2 do gpu.wait_timeline({semaphore = latest_completion.semaphore, value = latest_completion.value - 1})
+
+        cmd_pool := cmd_pools[latest_completion.value % frames_in_filght]
+        gpu.reset_command_pool(cmd_pool)
+        commands := gpu.begin_commands(cmd_pool)
+        frame := gpu.acquire(commands)
         if frame.render_view == nil do continue
-        
-        commands := gpu.begin_commands(device)
+
         gpu.begin_render_pass(commands, {
             colors = { { render_view = frame.render_view, load = .clear } },
         })
@@ -59,8 +69,9 @@ main :: proc() {
         gpu.draw(commands, nil, 3)
         gpu.end_render_pass(commands)
         
+        gpu.end_commands(commands)
         latest_completion.value += 1
-        gpu.submit_and_present(device, { commands }, latest_completion)
+        gpu.submit_and_present(device, { commands = {commands}, completion = latest_completion })
     }
 
     gpu.wait_idle(device)

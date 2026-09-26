@@ -45,12 +45,12 @@ extern "C" {
 
 
 
-    gpu::SwapchainFrame gpu_acquire(gpu::Device* device) {
-        return gpu::acquire(device);
+    gpu::SwapchainFrame gpu_acquire(gpu::CommandBuffer* commands) {
+        return gpu::acquire(commands);
     }
 
-    void gpu_submit_and_present(gpu::Device* device, gpu::Span<gpu::CommandBuffer* const> commands, gpu::TimelinePoint completion) {
-        return gpu::submit_and_present(device, commands, completion);
+    void gpu_submit_and_present(gpu::Device* device, const gpu::SubmitDesc* desc) {
+        return gpu::submit_and_present(device, *desc);
     }
 
     
@@ -77,8 +77,8 @@ extern "C" {
         return gpu::get_texture_size_align(device, *desc);
     }
 
-    gpu::Texture* gpu_create_texture(gpu::Device* device, const gpu::TextureDesc* desc, const gpu::TextureHeap* heap, uint64 offset) {
-        return gpu::create_texture(device, *desc, *heap, offset);
+    gpu::Texture* gpu_create_texture(gpu::CommandBuffer* commands, const gpu::TextureDesc* desc, const gpu::TextureHeap* heap, uint64 offset) {
+        return gpu::create_texture(commands, *desc, *heap, offset);
     }
 
     void gpu_destroy_texture(gpu::Texture* texture) {
@@ -122,12 +122,28 @@ extern "C" {
 
 
 
-    gpu::CommandBuffer* gpu_begin_commands(gpu::Device* device) {
-        return gpu::begin_commands(device);
+    gpu::CommandPool* gpu_create_command_pool(gpu::Device* device, uint32 queue_index) {
+        return gpu::create_command_pool(device, queue_index);
     }
 
-    void gpu_submit(gpu::Span<gpu::CommandBuffer* const> commands, gpu::TimelinePoint completion) {
-        return gpu::submit(commands, completion);
+    void gpu_destroy_command_pool(gpu::CommandPool* pool) {
+        gpu::destroy_command_pool(pool);
+    }
+
+    void gpu_reset_command_pool(gpu::CommandPool* pool) {
+        gpu::reset_command_pool(pool);
+    }
+
+    gpu::CommandBuffer* gpu_begin_commands(gpu::CommandPool* pool) {
+        return gpu::begin_commands(pool);
+    }
+
+    void gpu_end_commands(gpu::CommandBuffer* commands) {
+        gpu::end_commands(commands);
+    }
+
+    void gpu_submit(gpu::Device* device, const gpu::SubmitDesc* desc, uint32 queue_index) {
+        return gpu::submit(device, *desc, queue_index);
     }
 
 
@@ -168,8 +184,8 @@ extern "C" {
 
 
 
-    void gpu_begin_render_pass(gpu::CommandBuffer* commands, const gpu::RenderingDesc* desc) {
-        return gpu::begin_render_pass(commands, *desc);
+    void gpu_begin_render_pass(gpu::CommandBuffer* commands, const gpu::RenderingDesc* desc, gpu::RenderingFlags flags) {
+        return gpu::begin_render_pass(commands, *desc, flags);
     }
 
     void gpu_end_render_pass(gpu::CommandBuffer* commands) {

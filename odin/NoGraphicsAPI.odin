@@ -4,6 +4,7 @@ uint32x2 :: struct { x, y : u32 }
 uint32x3 :: struct { x, y, z : u32 }
 
 Device            :: struct {}
+CommandPool       :: struct {}
 Texture           :: struct {}
 RenderView        :: struct {}
 PSO               :: struct {}
@@ -70,6 +71,12 @@ TimelinePoint :: struct {
     value     : u64,
 }
 
+SubmitDesc :: struct {
+    commands   : []^CommandBuffer,
+    waits      : []TimelinePoint, // GPU waits cover all command stages.
+    completion : TimelinePoint,   // Required for every submission.
+}
+
 Format :: enum u8 {
     r8_srgb,
     rg8_srgb,
@@ -97,7 +104,6 @@ Format :: enum u8 {
     rgba16_uint,
     r32_uint,
     rg32_uint,
-    rgb32_uint,
     rgba32_uint,
 
     r16_float,
@@ -105,7 +111,6 @@ Format :: enum u8 {
     rgba16_float,
     r32_float,
     rg32_float,
-    rgb32_float,
     rgba32_float,
 
     rgb10a2_unorm,
@@ -167,11 +172,6 @@ TextureFormatInfo :: struct {
                 bytes_per_block = 8,
                 depth           = format == .d32_float_s8_uint,
                 stencil         = format == .d32_float_s8_uint,
-            }
-        case .rgb32_uint, .rgb32_float:
-            return {
-                block_extent    = {x = 1, y = 1},
-                bytes_per_block = 12,
             }
         case .rgba32_uint, .rgba32_float:
             return {
@@ -338,6 +338,13 @@ Accesses :: enum {
 
 DeviceCaps :: struct {
     device_name              : cstring,
+    // Flat queue indices: general first, then compute-only, then copy-only. Queue zero supports presentation.
+    queue_count              : u32,
+    general_queue_count      : u32,
+    compute_queue_count      : u32,
+    copy_queue_count         : u32,
+    // Copy-only texture offsets/extents align to these texel-block counts, except at mip edges. Zero means whole mip levels only.
+    copy_texture_granularity : uint32x3,
     max_push_data_size       : u64,
     // Common element size for suballocating TextureHeap storage; every SizeAlign::align divides this value.
     texture_heap_alignment   : u64,
@@ -350,10 +357,16 @@ DeviceCaps :: struct {
     storage_input_output16   : bool,
 }
 
+// Windowed device creation/destruction, drawable queries, acquire, and presentation stay on the window's message-pump thread.
+// The window must outlive the device. Other calls follow the object-level threading contract below.
 DeviceDesc :: struct {
     window                        : rawptr,
     swapchain_format              : Format,
     desired_swapchain_image_count : u32, // 1..8 presentation contexts.
+    // Counts are capped to each family's capacity. A nonzero request requires that kind of queue to be available.
+    desired_queue_count           : u32, // General graphics + compute queues; must be nonzero.
+    desired_compute_queue_count   : u32,
+    desired_copy_queue_count      : u32,
     timestamp_query_count         : u32, // Per command buffer; zero disables timestamps.
 }
 
@@ -521,6 +534,13 @@ RenderingDesc :: struct {
     stencil : StencilAttachment,
 }
 
+RenderingFlags :: bit_set[RenderingFlag; u32]
+RenderingFlag  :: enum  {
+    _unused0,
+    suspending,
+    resuming,
+}
+
 ByteSpan :: []u8
 
 // A span converted from a value remains valid only while that value is
@@ -538,6 +558,14 @@ when optimized {
 
 @(default_calling_convention = "c", link_prefix="gpu_")
 foreign NoGraphicsAPI {
+    // Rendering and raster PSOs accept at most eight color attachments. A render pass needs at least one attachment to infer its area.
+    // All resource destruction is immediate. Destroy resources only when no recorded or executing GPU frame uses them.
+    // The optional NoGraphicsAPIUtility DeleteQueue can defer destruction until a submitted frame completes.
+    // Wait for all submitted frames to drain before destroying the device.
+    // Distinct resource creation/destruction, immutable queries, and timeline waits may run concurrently on one device.
+    // Resource lifetime changes must be synchronized with every CPU/GPU use of that resource. Descriptor writes require disjoint destinations.
+    // Each (device, queue_index) and command pool (including recording its buffers) is externally synchronized; different queues/pools may run concurrently.
+    // Device idle/destruction requires exclusive access. Destroy command pools before their device. There are no internal queue or pool locks.
     @(require_results) create_device           :: proc(#by_ptr desc : DeviceDesc) -> DeviceInit ---
                        destroy_device          :: proc(device : ^Device) ---
     @(require_results) get_device_caps         :: proc(device : ^Device) -> ^DeviceCaps ---
@@ -550,8 +578,11 @@ foreign NoGraphicsAPI {
                        wait_timeline              :: proc(point : TimelinePoint) ---
                        wait_idle                  :: proc(device : ^Device) ---
 
-    @(require_results) acquire            :: proc(device : ^Device) -> SwapchainFrame --- // Empty while the drawable extent is zero.
-                       submit_and_present :: proc(device : ^Device, commands : []^CommandBuffer, completion : TimelinePoint) ---
+    // Acquire outside a render pass. Later buffers in the same presentation submission may also access the returned image.
+    // submit_and_present prepares the image for presentation after all submitted buffers.
+    // Empty while the drawable extent is zero. A nonempty acquire must be submitted with submit_and_present on queue zero.
+    @(require_results) acquire            :: proc(commands : ^CommandBuffer) -> SwapchainFrame --- // Empty while the drawable extent is zero.
+                       submit_and_present :: proc(device : ^Device, #by_ptr desc : SubmitDesc) ---
 
     // Every non-null returned pointer is 16-byte aligned. Descriptor heaps are exact allocations;
     // cpu_visible, gpu_only, and readback heaps are raw blocks for application-side suballocation.
@@ -564,11 +595,12 @@ foreign NoGraphicsAPI {
     @(require_results) create_texture_heap      :: proc(device : ^Device, byte_count : u64) -> TextureHeap ---
                        destroy_texture_heap     :: proc(#by_ptr heap : TextureHeap) ---
     @(require_results) get_texture_size_align   :: proc(device : ^Device, #by_ptr desc : TextureDesc) -> SizeAlign ---
-    @(require_results) create_texture           :: proc(device : ^Device, #by_ptr desc : TextureDesc, #by_ptr heap : TextureHeap, offset : u64) -> ^Texture ---
+    // Records texture initialization into commands. Use outside of a render pass. Commands must be submitted before other use of the texture.
+    @(require_results) create_texture           :: proc(commands : ^CommandBuffer, #by_ptr desc : TextureDesc, #by_ptr heap : TextureHeap, offset : u64) -> ^Texture ---
                        destroy_texture          :: proc(texture : ^Texture) ---
     @(require_results) create_render_view       :: proc(texture : ^Texture, #by_ptr desc : RenderViewDesc = {}) -> ^RenderView ---
                        destroy_render_view      :: proc(render_view : ^RenderView) ---
-                       write_texture_descriptor :: proc(device : ^Device, cpu_destination : rawptr, texture : ^Texture, type : TextureDescriptorType, #by_ptr desc : TextureDescriptorDesc = {}) ---
+                       write_texture_descriptor :: proc(device : ^Device, cpu_destination : rawptr, texture : ^Texture, type : TextureDescriptorType, #by_ptr desc : TextureDescriptorDesc = { format = .undefined }) ---
                        write_sampler_descriptor :: proc(device : ^Device, cpu_destination : rawptr, #by_ptr desc : SamplerDesc = {}) ---
 
     @(require_results) create_graphics_pso :: proc(device : ^Device, #by_ptr desc : GraphicsPSODesc) -> ^PSO ---
@@ -576,26 +608,38 @@ foreign NoGraphicsAPI {
     @(require_results) create_compute_pso  :: proc(device : ^Device, compute_spirv : []u32) -> ^PSO ---
                        destroy_pso         :: proc(pso : ^PSO) ---
 
-    // Create textures before beginning commands. The first begun command buffer initializes them and must be submitted first.
-    // Every begun command buffer must be included exactly once in the next submit or submit_and_present call.
-    @(require_results) begin_commands :: proc(device : ^Device) -> ^CommandBuffer ---
-                       submit         :: proc(commands : []^CommandBuffer, completion : TimelinePoint) ---
+    // Pools retain command storage until destruction. Reset only after every submitted buffer from this pool completes; unsubmitted buffers are discarded.
+    // Reset invalidates all previously returned CommandBuffer handles. Use one pool per worker and in-flight frame for independent recording/reuse.
+    // Buffers from a pool must be submitted to the selected queue's family.
+    @(require_results) create_command_pool  :: proc(device : ^Device, queue_index : u32 = 0) -> ^CommandPool ---
+                       destroy_command_pool :: proc(pool : ^CommandPool) ---
+                       reset_command_pool   :: proc(pool : ^CommandPool) ---
+    @(require_results) begin_commands       :: proc(pool : ^CommandPool) -> ^CommandBuffer ---
+                       end_commands         :: proc(commands : ^CommandBuffer) ---
+    // Submit any ended subset exactly once before pool reset. Order completion semaphore signal values across queues.
+    // queue_index must be less than DeviceCaps::queue_count; omitted selects queue zero.
+                       submit               :: proc(device : ^Device, #by_ptr desc : SubmitDesc, queue_index : u32 = 0) ---
 
     set_texture_descriptor_heap :: proc(commands : ^CommandBuffer, heap : GpuRange) --- // Heap range must be full GpuHeap range
     set_sampler_descriptor_heap :: proc(commands : ^CommandBuffer, heap : GpuRange) --- // Heap range must be full GpuHeap range
 
     copy_memory            :: proc(commands : ^CommandBuffer, source : GpuRange, destination : GpuRange) ---
+    // Depth/stencil copies require a general queue. Copy-only queues also require DeviceCaps::copy_texture_granularity alignment.
     copy_memory_to_texture :: proc(commands : ^CommandBuffer, source : GpuRange, destination : ^Texture, #by_ptr copy : TextureCopyDesc = {}) ---
     copy_texture_to_memory :: proc(commands : ^CommandBuffer, source : ^Texture, destination : ^GpuRange, #by_ptr copy : TextureCopyDesc = {}) ---
 
     barrier :: proc(commands : ^CommandBuffer, before : Stage, before_access : Access, after : Stage, after_access : Access) ---
 
     // Up to DeviceDesc::timestamp_query_count markers per command buffer. stage must map to a single GPU pipeline stage.
+    // Ignored, leaving the destination unchanged, when timestamps are disabled or the queue lacks profiling support.
     // Destinations must be 8-byte aligned and distinct until submission completes.
-    // Results are copied at command-buffer end; read mapped readback memory only after submission completes.
+    // Results are available after submission completes; only then read mapped readback memory.
     write_timestamp :: proc(commands : ^CommandBuffer, gpu_destination : ^u64, stage : Stage = {.all_commands}) ---
 
-    begin_render_pass :: proc(commands : ^CommandBuffer, #by_ptr desc : RenderingDesc) ---
+    // Each segment needs matching attachments, load/store operations, and clear values, and its own begin/end_render_pass pair.
+    // Submit the complete suspend/resume chain in order in one batch. No action or synchronization commands may occur between segments.
+    // Resuming skips load/clear operations; suspending defers store operations. Command-buffer bindings are not inherited.
+    begin_render_pass :: proc(commands : ^CommandBuffer, #by_ptr desc : RenderingDesc, flags : RenderingFlags = {}) ---
     end_render_pass   :: proc(commands : ^CommandBuffer) ---
 
     // begin_render_pass resets a full render-area viewport and scissor and disables depth/stencil; these commands override those defaults until the next pass
